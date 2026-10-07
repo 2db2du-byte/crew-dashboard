@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rick's Crew</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Press+Start+2P&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05080d;
+    --panel: rgba(14, 22, 30, .82);
+    --line: #1f3140;
+    --text: #eef5ec;
+    --dim: #94a7a0;
+    --portal: #97ce4c;
+    --portal-2: #c6f36b;
+    --glow: rgba(151, 206, 76, .5);
+    --busy: #45c4d9;
+    --idle: #4b5866;
+    --ink: #0b0d10;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 600 15px/1.45 "Nunito", system-ui, sans-serif;
+  }
+
+  /* ---------- the space scene ---------- */
+  #scene { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  #stars { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .nebula {
+    position: absolute; inset: -20%;
+    background:
+      radial-gradient(40% 35% at 18% 20%, rgba(80, 160, 60, .28), transparent 70%),
+      radial-gradient(35% 30% at 85% 80%, rgba(40, 140, 170, .25), transparent 70%),
+      radial-gradient(30% 25% at 70% 15%, rgba(150, 70, 190, .18), transparent 70%);
+    animation: drift 60s ease-in-out infinite alternate;
+  }
+  @keyframes drift { to { transform: translate(3%, -2%) scale(1.05); } }
+  .big-portal {
+    position: absolute; width: 620px; height: 620px; right: -170px; top: -150px;
+    opacity: .55; filter: drop-shadow(0 0 60px var(--glow));
+  }
+  .big-portal .swirl { transform-origin: 50% 50%; animation: spin 14s linear infinite; }
+  .big-portal .swirl.b { animation-duration: 9s; animation-direction: reverse; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .planet { position: absolute; border-radius: 50%; }
+  .p1 {
+    width: 170px; height: 170px; left: -50px; bottom: 80px;
+    background: radial-gradient(circle at 35% 30%, #f3a6c8, #c2468a 55%, #5b1440);
+    box-shadow: inset -18px -12px 40px rgba(0,0,0,.55), 0 0 40px rgba(220,90,160,.25);
+  }
+  .p1::after {
+    content: ""; position: absolute; left: -40px; right: -40px; top: 72px; height: 24px;
+    border: 4px solid rgba(255, 200, 230, .55); border-radius: 50%; transform: rotate(-14deg);
+  }
+  .p2 {
+    width: 64px; height: 64px; left: 46%; bottom: 7%;
+    background: radial-gradient(circle at 35% 30%, #ffe08a, #e09a2e 60%, #6b3c0a);
+    box-shadow: inset -8px -6px 18px rgba(0,0,0,.5);
+    animation: bob 9s ease-in-out infinite alternate;
+  }
+  .p3 {
+    width: 34px; height: 34px; right: 380px; top: 30%;
+    background: radial-gradient(circle at 35% 30%, #a8f0ff, #3aa6c9 60%, #0d3d52);
+    box-shadow: inset -5px -4px 10px rgba(0,0,0,.5);
+    animation: bob 7s ease-in-out infinite alternate-reverse;
+  }
+  @keyframes bob { to { transform: translateY(14px); } }
+  .ship {
+    position: absolute; width: 190px; top: 22%; left: -240px;
+    animation: fly 38s linear infinite; filter: drop-shadow(0 0 10px rgba(255,180,80,.35));
+  }
+  @keyframes fly {
+    0% { transform: translate(0, 0) rotate(-4deg); }
+    50% { transform: translate(70vw, 18vh) rotate(3deg); }
+    100% { transform: translate(140vw, -4vh) rotate(-4deg); }
+  }
+  .ship .flame { animation: flicker .18s steps(2) infinite; transform-origin: right center; }
+  @keyframes flicker { 50% { transform: scaleX(.6); opacity: .7; } }
+
+  /* ---------- layout ---------- */
+  .app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 18px; padding: 18px 28px 10px; }
+  .mini-portal {
+    width: 54px; height: 54px; flex: none; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--portal-2), #3f8f2a, var(--portal), #1f5e22, var(--portal-2));
+    box-shadow: 0 0 26px var(--glow), inset 0 0 14px rgba(0,0,0,.6);
+    animation: spin 5s linear infinite;
+    mask: radial-gradient(circle, transparent 22%, #000 24%);
+  }
+  h1 {
+    margin: 0; font: 400 40px/1 "Bangers", "Nunito", sans-serif; letter-spacing: 1.5px;
+    color: var(--portal-2);
+    text-shadow: 3px 3px 0 var(--ink), -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink), 0 0 22px var(--glow);
+  }
+  h1 span { color: #fff; }
+  .sub { color: var(--dim); font-size: 14px; margin-top: 4px; }
+  .clock { margin-left: 18px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Claude's plan meter, next to the clock ---------- */
+  .usage { margin-left: auto; display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px;
+    background: linear-gradient(135deg, rgba(217,119,87,.18), rgba(14,22,30,.9)); border: 2px solid var(--ink);
+    border-radius: 14px; box-shadow: 3px 3px 0 var(--ink), 0 0 0 2px #d97757 inset; }
+  .usage .face { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex: none;
+    background: radial-gradient(circle, #3a2018, #140c0a 70%); box-shadow: 0 0 0 2px #d97757; }
+  .usage .face svg { width: 100%; height: 100%; }
+  .usage .rows { display: grid; gap: 5px; min-width: 190px; font: 700 11px/1 "Nunito", sans-serif; }
+  .usage .row { display: grid; grid-template-columns: 52px 1fr 36px; align-items: center; gap: 6px; }
+  .usage .lbl { color: #ffb38a; text-transform: uppercase; letter-spacing: .5px; }
+  .usage .bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .usage .bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--portal); transition: width .6s; }
+  .usage .bar i.warn { background: #f2c14e; } .usage .bar i.hot { background: #ff5d5d; }
+  .usage .pct { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .usage .rs { color: var(--dim); font-weight: 400; font-size: 10px; grid-column: 2 / 4; margin-top: -3px; }
+  .clock b { font: 400 34px/1 "Bangers", sans-serif; letter-spacing: 1px; display: block; text-shadow: 2px 2px 0 var(--ink); }
+  main {
+    flex: 1; display: grid; grid-template-columns: 1fr 340px; gap: 18px;
+    padding: 8px 28px 24px; min-height: 0;
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+    gap: 16px; align-content: start; overflow: auto; padding: 6px 6px 6px 2px;
+  }
+  .grid::-webkit-scrollbar, .feed::-webkit-scrollbar { width: 8px; }
+  .grid::-webkit-scrollbar-thumb, .feed::-webkit-scrollbar-thumb { background: #27404f; border-radius: 99px; }
+
+  /* ---------- crew cards ---------- */
+  .card {
+    background: var(--panel); backdrop-filter: blur(6px);
+    border: 3px solid var(--ink); border-radius: 18px; padding: 40px 16px 16px;
+    box-shadow: 5px 5px 0 var(--ink), 0 0 0 1px var(--line) inset;
+    position: relative; transition: transform .25s, box-shadow .25s;
+  }
+  .card:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink), 0 0 0 1px var(--line) inset; }
+  .card.working { box-shadow: 5px 5px 0 var(--ink), 0 0 0 2px var(--portal) inset, 0 0 30px var(--glow); }
+  .card.busy { box-shadow: 5px 5px 0 var(--ink), 0 0 0 2px var(--busy) inset, 0 0 22px rgba(69,196,217,.35); }
+  .top { display: flex; align-items: center; gap: 12px; }
+  .face {
+    width: 76px; height: 76px; flex: none; border-radius: 50%; position: relative;
+    background: radial-gradient(circle, #1d3a24 0%, #0d1a12 70%);
+    border: 3px solid var(--ink); box-shadow: 0 0 0 3px #2a4733;
+  }
+  .face svg { position: absolute; inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); border-radius: 50%; }
+  .working .face { box-shadow: 0 0 0 3px var(--portal), 0 0 18px var(--glow); }
+  .working .face::before {
+    content: ""; position: absolute; inset: -9px; border-radius: 50%;
+    background: conic-gradient(var(--portal-2), transparent 30%, var(--portal) 55%, transparent 80%, var(--portal-2));
+    mask: radial-gradient(circle, transparent 62%, #000 64%);
+    animation: spin 2.4s linear infinite;
+  }
+  .busy .face { box-shadow: 0 0 0 3px var(--busy); }
+  .name { font: 400 25px/1 "Bangers", sans-serif; letter-spacing: 1px; text-shadow: 2px 2px 0 var(--ink); }
+  .role { color: var(--dim); font-size: 13px; margin-top: 3px; }
+  .pill {
+    position: absolute; top: 10px; right: 12px;
+    font: 800 10.5px/1 "Nunito", sans-serif; letter-spacing: .8px; text-transform: uppercase;
+    padding: 5px 9px; border-radius: 99px; border: 2px solid var(--ink);
+    background: #1a2530; color: var(--dim); display: flex; align-items: center; gap: 6px;
+  }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--idle); }
+  .working .pill { color: var(--ink); background: var(--portal); }
+  .working .pill i { background: var(--ink); animation: pulse 1.1s ease-in-out infinite; }
+  .busy .pill { color: var(--ink); background: var(--busy); }
+  .busy .pill i { background: var(--ink); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; transform: scale(.6); } }
+  .bubble {
+    position: relative; margin: 14px 0 2px; padding: 8px 12px;
+    background: #fdfbe8; color: var(--ink); border: 3px solid var(--ink); border-radius: 14px;
+    font-weight: 800; font-size: 14px; box-shadow: 3px 3px 0 var(--ink);
+  }
+  .bubble::before {
+    content: ""; position: absolute; left: 26px; top: -12px; width: 14px; height: 14px;
+    background: #fdfbe8; border-left: 3px solid var(--ink); border-top: 3px solid var(--ink);
+    transform: rotate(45deg) skew(8deg, 8deg);
+  }
+  .bubble:empty { display: none; }
+  ul { list-style: none; margin: 12px 0 0; padding: 0; }
+  li { color: var(--dim); font-size: 13.5px; padding: 2px 0; }
+  li:first-child { color: var(--text); }
+  .bar { height: 10px; background: #0c141b; border: 2px solid var(--ink); border-radius: 99px; margin-top: 12px; overflow: hidden; }
+  .bar b {
+    display: block; height: 100%; border-radius: 99px; transition: width .8s;
+    background: repeating-linear-gradient(-45deg, var(--portal) 0 8px, var(--portal-2) 8px 16px);
+    background-size: 22px 22px; animation: slide 1s linear infinite;
+  }
+  @keyframes slide { to { background-position: 22px 0; } }
+
+  /* Rick gets the big banner */
+  .card.rick { grid-column: 1 / -1; display: flex; align-items: center; gap: 20px; padding: 16px 20px; }
+  .card.rick .pill { top: 14px; right: 16px; }
+  .card.rick .face { width: 112px; height: 112px; }
+  .card.rick .name { font-size: 36px; }
+  .rick-body { flex: 1; min-width: 0; }
+  .quote { color: var(--portal-2); font-style: italic; font-size: 14px; margin-top: 6px; min-height: 20px; }
+
+  /* ---------- activity feed ---------- */
+  aside {
+    background: var(--panel); backdrop-filter: blur(6px);
+    border: 3px solid var(--ink); border-radius: 18px; box-shadow: 5px 5px 0 var(--ink);
+    padding: 16px; display: flex; flex-direction: column; min-height: 0; margin: 6px 0;
+  }
+  aside h2 { margin: 0 0 8px; font: 400 26px/1 "Bangers", sans-serif; letter-spacing: 1px; color: var(--portal-2); text-shadow: 2px 2px 0 var(--ink); }
+  .feed { overflow: auto; flex: 1; }
+  .ev { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 13.5px; }
+  .ev:last-child { border-bottom: 0; }
+  .ev .mini { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 2px solid var(--ink); background: #0d1a12; overflow: hidden; }
+  .ev .mini svg { width: 100%; height: 100%; }
+  .ev .t { color: var(--dim); font-size: 12px; }
+  .ev .s { color: var(--portal); font-weight: 800; }
+  .ev .s.go { color: var(--busy); }
+  .empty { color: var(--dim); font-size: 14px; text-align: center; padding: 20px 6px; }
+  .empty .bigface { width: 120px; height: 120px; margin: 0 auto 10px; opacity: .9; }
+  .offline { color: #ff8a6a; }
+  /* ---------- launch pad ---------- */
+  .pad { display: flex; gap: 10px; padding: 0 28px 10px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #27404f transparent; cursor: grab; }
+  .pad.dragging { cursor: grabbing; user-select: none; }
+  .pad.dragging a { pointer-events: none; }
+  .pad::-webkit-scrollbar { height: 8px; }
+  .pad::-webkit-scrollbar-thumb { background: #27404f; border-radius: 99px; }
+  .pad a {
+    flex: none; display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text);
+    background: var(--panel); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 3px 3px 0 var(--ink);
+    padding: 6px 12px 6px 10px; font-weight: 800; font-size: 13px; transition: transform .15s;
+  }
+  .pad a:hover { transform: translate(-1px, -2px); }
+  .pad a .e { font-size: 18px; }
+  .pad a .dot { width: 9px; height: 9px; border-radius: 50%; background: #5a2a2a; border: 2px solid var(--ink); }
+  .pad a.up .dot { background: var(--portal); box-shadow: 0 0 8px var(--glow); }
+  .pad a.down { opacity: .6; }
+  .mode {
+    margin-left: 18px; cursor: pointer; font: 400 10px/1 "Press Start 2P", monospace; color: var(--ink);
+    background: var(--portal-2); border: 3px solid var(--ink); border-radius: 10px; box-shadow: 3px 3px 0 var(--ink); padding: 9px 10px;
+  }
+  .mode:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+
+  /* ---------- pixel mode ---------- */
+  #pixelwrap { display: none; position: relative; min-height: 0; border: 3px solid var(--ink); border-radius: 18px; box-shadow: 5px 5px 0 var(--ink); overflow: hidden; background: #05080d; margin: 6px 0; }
+  #pixelwrap canvas { display: block; image-rendering: pixelated; cursor: pointer; }
+  body.pixel #pixelwrap { display: block; }
+  body.pixel .grid { display: none; }
+  body.pixel h1, body.pixel aside h2, body.pixel .name { font-family: "Press Start 2P", monospace; letter-spacing: 0; }
+  body.pixel h1 { font-size: 22px; }
+  body.pixel .name { font-size: 13px; }
+  body.pixel aside h2 { font-size: 14px; line-height: 1.4; }
+  .picked { margin-bottom: 12px; }
+  .picked:empty { display: none; }
+  .picked .card { padding-top: 40px; }
+  .hint { color: var(--dim); font-size: 12px; margin: -2px 0 8px; display: none; }
+  body.pixel .hint { display: block; }
+  body:not(.pixel) .picked { display: none; }
+
+  /* ---------- Claude, the chief engineer ---------- */
+  .claude {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 12px 14px; cursor: pointer;
+    background: linear-gradient(135deg, rgba(217,119,87,.22), rgba(14,22,30,.9)); border: 3px solid var(--ink);
+    border-radius: 16px; box-shadow: 4px 4px 0 var(--ink), 0 0 0 2px #d97757 inset; transition: transform .15s, box-shadow .15s;
+  }
+  .claude:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink), 0 0 0 2px #d97757 inset, 0 0 26px rgba(217,119,87,.45); }
+  .claude .face { width: 70px; height: 70px; background: radial-gradient(circle, #3a2018, #140c0a 70%); box-shadow: 0 0 0 3px #d97757; }
+  .claude .name { color: #ffb38a; }
+  .claude .go { margin-top: 6px; display: inline-block; font: 800 11px/1 "Nunito", sans-serif; letter-spacing: .6px; text-transform: uppercase;
+    background: #d97757; color: var(--ink); border: 2px solid var(--ink); border-radius: 99px; padding: 5px 10px; }
+  body.pixel .claude .name { font-size: 12px; }
+  .claude.desk .face { display: grid; place-items: center; font-size: 34px; }
+  /* Open WebUI card: the free AIs (Rabbid picked Snoopy) */
+  .claude.free { background: linear-gradient(135deg, rgba(151,206,76,.2), rgba(14,22,30,.9)); box-shadow: 4px 4px 0 var(--ink), 0 0 0 2px var(--portal) inset; }
+  .claude.free:hover { box-shadow: 6px 6px 0 var(--ink), 0 0 0 2px var(--portal) inset, 0 0 26px var(--glow); }
+  .claude.free .face { background: radial-gradient(circle, #f4f1e6, #cfd8c0 70%); box-shadow: 0 0 0 3px var(--portal); padding: 6px; }
+  .claude.free .name { color: var(--portal-2); }
+  .claude.free .go { background: var(--portal); }
+
+  /* ---------- Free AI Lab ---------- */
+  .labbtn { margin-left: 10px; background: #ffb38a; }
+  #lab { display: none; overflow: auto; padding: 6px 6px 6px 2px; min-height: 0; }
+  body.lab #lab { display: block; }
+  body.lab .grid, body.lab #pixelwrap { display: none !important; }
+  .lab-head { display: flex; align-items: baseline; gap: 14px; margin: 2px 0 12px; }
+  .lab-head h2 { margin: 0; font: 400 32px/1 "Bangers", sans-serif; letter-spacing: 1px; color: #ffb38a; text-shadow: 2px 2px 0 var(--ink); }
+  .lab-head .sub { margin: 0; }
+  .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+  .tool { background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 4px 4px 0 var(--ink); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .tool .t { display: flex; align-items: center; gap: 10px; }
+  .tool .e { font-size: 28px; }
+  .tool .n { font: 400 20px/1 "Bangers", sans-serif; letter-spacing: .8px; }
+  .tool .tm { color: var(--dim); font-size: 12px; }
+  .tool textarea { resize: vertical; min-height: 54px; background: #0c141b; color: var(--text); border: 2px solid #27404f; border-radius: 10px; padding: 8px; font: 600 13.5px/1.35 "Nunito", sans-serif; }
+  .drop { border: 2px dashed #3a5566; border-radius: 10px; padding: 14px 8px; text-align: center; color: var(--dim); font-size: 13px; cursor: pointer; }
+  .drop.over { border-color: var(--portal); color: var(--portal); }
+  .drop.has { border-style: solid; color: var(--text); }
+  .gobtn { align-self: flex-start; cursor: pointer; font: 800 13px/1 "Nunito", sans-serif; text-transform: uppercase; letter-spacing: .6px;
+    background: var(--portal); color: var(--ink); border: 3px solid var(--ink); border-radius: 10px; box-shadow: 3px 3px 0 var(--ink); padding: 8px 14px; }
+  .gobtn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  .gobtn:disabled { opacity: .5; }
+  .heavy { font-size: 11px; color: #ffb38a; }
+  .askc { margin-bottom: 16px; box-shadow: 4px 4px 0 var(--ink), 0 0 0 2px #d97757 inset; background: linear-gradient(135deg, rgba(217,119,87,.18), var(--panel)); }
+  .askc .n { color: #ffb38a; }
+  .askgo { background: #d97757; }
+  /* Free AI brains: ask box + status lights */
+  .askf { margin-bottom: 16px; box-shadow: 4px 4px 0 var(--ink), 0 0 0 2px var(--portal) inset; background: linear-gradient(135deg, rgba(151,206,76,.16), var(--panel)); }
+  .askf .n { color: var(--portal-2); }
+  .askf select { background: #0b0d10; color: var(--text); border: 2px solid var(--ink); border-radius: 8px; padding: 6px 8px; font: 700 12px "Nunito", sans-serif; margin-right: 8px; }
+  .askf .ans { white-space: pre-wrap; margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(0,0,0,.35); font-size: 13px; line-height: 1.45; display: none; max-height: 340px; overflow: auto; }
+  .brains { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font: 700 11px "Nunito", sans-serif; color: var(--dim); }
+  .brains span::before { content: "●"; margin-right: 4px; color: #4b5866; }
+  .brains span.up::before { color: var(--portal); } .brains span.down::before { color: #ff5d5d; }
+  .rickbtn {
+    position: absolute; top: 48px; right: 16px; cursor: pointer;
+    font: 800 11px/1 "Nunito", sans-serif; letter-spacing: .8px; text-transform: uppercase;
+    padding: 7px 12px; border-radius: 99px; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink);
+    background: var(--portal-2); color: var(--ink);
+  }
+  .rickbtn:hover { background: #e3ff9e; }
+  .rickbtn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
+  .rickbtn:disabled { opacity: .75; cursor: wait; }
+  .jobs { display: grid; gap: 10px; margin-bottom: 16px; }
+  .job { background: var(--panel); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 3px 3px 0 var(--ink); padding: 10px 12px; }
+  .job .h { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+  .job .st { margin-left: auto; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; padding: 4px 8px; border-radius: 99px; border: 2px solid var(--ink); background: #1a2530; color: var(--dim); }
+  .job.running .st, .job.waiting .st { background: var(--busy); color: var(--ink); }
+  .job.done .st { background: var(--portal); color: var(--ink); }
+  .job.failed .st { background: #ff8a6a; color: var(--ink); }
+  .job .q { color: var(--dim); font-size: 13px; margin-top: 4px; }
+  .job .msg { color: #ffb38a; font-size: 12.5px; margin-top: 4px; }
+  .res { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; align-items: flex-start; }
+  .res img { max-height: 180px; border-radius: 10px; border: 2px solid var(--ink); background: repeating-conic-gradient(#20303c 0 25%, #16222c 0 50%) 0 0/16px 16px; }
+  .res video { max-height: 260px; border-radius: 10px; border: 2px solid var(--ink); }
+  .res a, .res button { color: var(--portal-2); font-weight: 800; font-size: 13px; background: none; border: 0; cursor: pointer; padding: 0; text-decoration: underline; }
+
+  /* ---------- crew pop-up ---------- */
+  .clickable { cursor: pointer; }
+  #crewpop { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; background: rgba(3,6,10,.72); backdrop-filter: blur(3px); }
+  #crewpop.on { display: flex; }
+  .pop { width: min(520px, 92vw); background: var(--panel); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 8px 8px 0 var(--ink), 0 0 40px var(--glow); padding: 20px; }
+  .pop .top { gap: 16px; }
+  .pop .face { width: 96px; height: 96px; }
+  .pop .name { font-size: 34px; }
+  .pop .acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .pop textarea { width: 100%; margin-top: 14px; min-height: 70px; resize: vertical; background: #0c141b; color: var(--text); border: 2px solid #27404f; border-radius: 12px; padding: 10px; font: 600 14px/1.35 "Nunito", sans-serif; }
+  .pop .note { margin-top: 12px; color: var(--portal-2); font-weight: 800; min-height: 20px; }
+  .pop .x { float: right; cursor: pointer; background: none; border: 0; color: var(--dim); font-size: 26px; line-height: 1; }
+  .gobtn.alt { background: #45c4d9; }
+
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } .big-portal { width: 380px; height: 380px; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="scene" aria-hidden="true">
+  <div class="nebula"></div>
+  <canvas id="stars"></canvas>
+  <svg class="big-portal" viewBox="0 0 200 200">
+    <defs>
+      <radialGradient id="pg" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#eaffb8"/><stop offset=".35" stop-color="#b6ec5c"/>
+        <stop offset=".75" stop-color="#4fa83a"/><stop offset="1" stop-color="#1c4d1c" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <circle cx="100" cy="100" r="96" fill="url(#pg)"/>
+    <g class="swirl">
+      <path d="M100 100 m0 -80 a80 80 0 0 1 60 130 a60 60 0 0 0 -60 -110" fill="#d9ff8f" opacity=".55"/>
+      <path d="M100 100 m0 80 a80 80 0 0 1 -60 -130 a60 60 0 0 0 60 110" fill="#d9ff8f" opacity=".55"/>
+    </g>
+    <g class="swirl b">
+      <path d="M100 100 m-55 0 a55 55 0 0 1 95 -35 a40 40 0 0 0 -95 35" fill="#2f7d32" opacity=".7"/>
+      <path d="M100 100 m55 0 a55 55 0 0 1 -95 35 a40 40 0 0 0 95 -35" fill="#2f7d32" opacity=".7"/>
+    </g>
+    <circle cx="100" cy="100" r="18" fill="#f3ffd9" opacity=".85"/>
+  </svg>
+  <div class="planet p1"></div><div class="planet p2"></div><div class="planet p3"></div>
+  <svg class="ship" viewBox="0 0 200 90">
+    <path class="flame" d="M10 52 Q-8 46 10 40 L26 44 L26 50 Z" fill="#ffb347"/>
+    <path d="M24 38 Q30 28 70 30 L150 34 Q190 40 192 52 Q188 64 150 66 L60 66 Q28 64 24 52 Z" fill="#c9ced6" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M86 34 Q96 10 130 12 Q156 16 158 36 Z" fill="#9fe3f5" fill-opacity=".75" stroke="#111" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="110" cy="26" r="7" fill="#b8e3f2" stroke="#111" stroke-width="2"/>
+    <circle cx="132" cy="27" r="6" fill="#6b3f1d" stroke="#111" stroke-width="2"/>
+    <path d="M40 66 L30 80 M150 66 L160 80" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="70" cy="52" r="4" fill="#ff5a5a"/><circle cx="160" cy="50" r="4" fill="#97ce4c"/>
+  </svg>
+</div>
+
+<div class="app">
+  <header>
+    <div class="mini-portal"></div>
+    <div>
+      <h1>Rick's Crew <span>· Mission Control</span></h1>
+      <div class="sub" id="sub">Opening a portal…</div>
+    </div>
+    <button class="mode" id="mode" title="Switch between comic and pixel-art views">PIXEL MODE</button>
+    <button class="mode labbtn" id="labbtn" title="Your free AI tools, one click each">🧪 AI LAB</button>
+    <div class="usage" id="usage" title="Your Claude Pro plan: how much of the 5-hour session and the week you've used">
+      <div class="face" id="usageFace"></div>
+      <div class="rows">
+        <div class="row"><span class="lbl">Session</span><span class="bar"><i id="u5"></i></span><span class="pct" id="u5p">…</span><span class="rs" id="u5r"></span></div>
+        <div class="row"><span class="lbl">Week</span><span class="bar"><i id="u7"></i></span><span class="pct" id="u7p">…</span><span class="rs" id="u7r"></span></div>
+      </div>
+    </div>
+    <div class="clock"><b id="time"></b><span class="sub" id="date"></span></div>
+  </header>
+  <nav class="pad" id="pad"></nav>
+  <main>
+    <section class="grid" id="grid"></section>
+    <section id="pixelwrap"><canvas id="pixel"></canvas></section>
+    <section id="lab">
+      <div class="lab-head"><h2>Free AI Lab</h2><div class="sub" id="labsub">Free, private, on this laptop. One job at a time.</div></div>
+      <div class="tool askc">
+        <div class="t"><span class="e">🧠</span><div><div class="n">Ask Claude</div><div class="tm">Questions, research, writing, plans · smartest · uses your Pro plan</div></div></div>
+        <textarea id="askq" placeholder="What's the best cheap mini PC for an always-on home server?"></textarea>
+        <button class="gobtn askgo" id="askgo">🧠 Ask Claude</button>
+      </div>
+      <div class="tool askf">
+        <div class="t"><span class="e">🆓</span><div><div class="n">Ask the free AIs</div><div class="tm">Free cloud brains when online, this laptop's own AI when offline · never touches your Claude limit</div></div></div>
+        <textarea id="askfq" placeholder="Explain how a heat pump works, like I'm 10."></textarea>
+        <select id="askfjob" title="Which kind of brain">
+          <option value="chat">⚡ Everyday</option><option value="smart">🧠 Think hard</option>
+          <option value="coder">💻 Coder</option><option value="long">📜 Long documents</option>
+        </select><button class="gobtn" id="askfgo">🆓 Ask</button>
+        <div class="ans" id="askfans"></div>
+        <div class="brains" id="brains"></div>
+      </div>
+      <div class="jobs" id="jobs"></div>
+      <div class="tools" id="tools"></div>
+    </section>
+    <aside>
+      <div class="claude" id="claude" title="Open a Claude terminal: your fixer and builder">
+        <div class="face" id="claudeFace"></div>
+        <div><div class="name">Claude</div><div class="role">Chief engineer · builds &amp; fixes</div><span class="go" id="claudeGo">▶ Open Claude</span></div>
+      </div>
+      <div class="claude desk" id="claudeDesk" title="Open the Claude desktop app">
+        <div class="face">🖥️</div>
+        <div><div class="name">Desktop Claude</div><div class="role">The Claude app · chats &amp; code sessions</div><span class="go" id="claudeDeskGo">▶ Open Desktop Claude</span></div>
+      </div>
+      <div class="claude free" id="freeAI" title="Open WebUI: chat with all your free AIs (library, notes, news, pictures, British voice)">
+        <div class="face"><svg viewBox="0 0 100 100" aria-hidden="true"><ellipse cx="54" cy="56" rx="30" ry="27" fill="#fff" stroke="#111" stroke-width="3"/><ellipse cx="80" cy="64" rx="14" ry="10" fill="#fff" stroke="#111" stroke-width="3"/><ellipse cx="92" cy="62" rx="6" ry="5" fill="#111"/><path d="M34 34 C18 36 14 62 26 74 C34 78 40 66 38 50 Z" fill="#111"/><path d="M60 50 q5 -5 10 0" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/><path d="M66 74 q8 5 16 0" fill="none" stroke="#111" stroke-width="3" stroke-linecap="round"/><rect x="34" y="82" width="34" height="7" rx="3" fill="#e23b3b" stroke="#111" stroke-width="2"/></svg></div>
+        <div><div class="name">Free AIs</div><div class="role">Open WebUI · 15 free models · offline</div><span class="go" id="freeAIGo">▶ Open WebUI</span></div>
+      </div>
+      <div class="picked" id="picked"></div>
+      <h2>Crew activity</h2>
+      <div class="hint">Click a room to see who's in it.</div>
+      <div class="feed" id="feed"></div>
+    </aside>
+  </main>
+</div>
+
+<div id="crewpop" onclick="if (event.target === this) closeCrew()"><div class="pop" id="pop"></div></div>
+<script src="/avatars.js"></script>
+<script src="/pixel.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const face = (k) => (window.AVATARS && AVATARS[k]) || "";
+const LABEL = { working: "On a mission", busy: "Busy", idle: "Standing by" };
+const QUOTES = [
+  "Wubba lubba dub dub!",
+  "Nobody exists on purpose. Nobody belongs anywhere. Everybody's gonna back up their files.",
+  "Sometimes science is more art than science, Rabbid.",
+  "I'm not saying the crew's perfect, but it's way better than Jerry.",
+  "Get schwifty. But, like, organized.",
+  "That's the beauty of the multiverse, Rabbid. Infinite backups.",
+  "I turned myself into a dashboard, Rabbid! I'm Dashboard Riiick!",
+];
+
+/* starfield */
+const cv = $("stars"), ctx = cv.getContext("2d");
+let stars = [];
+function sizeStars() {
+  cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
+  stars = Array.from({ length: 260 }, () => ({
+    x: Math.random() * cv.width, y: Math.random() * cv.height,
+    r: (Math.random() * 1.4 + .3) * devicePixelRatio, p: Math.random() * Math.PI * 2, s: Math.random() * .02 + .005,
+    hue: Math.random() < .15 ? (Math.random() < .5 ? "190,255,140" : "160,220,255") : "255,255,255",
+  }));
+}
+function drawStars() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  for (const s of stars) {
+    s.p += s.s;
+    ctx.fillStyle = `rgba(${s.hue},${.35 + Math.sin(s.p) * .3 + .3})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
+  }
+  requestAnimationFrame(drawStars);
+}
+addEventListener("resize", sizeStars); sizeStars(); drawStars();
+
+function ago(t, now) {
+  const s = Math.max(0, Math.round(now - t));
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  return Math.floor(s / 86400) + " d ago";
+}
+
+let quoteIx = Math.floor(Math.random() * QUOTES.length);
+function card(c) {
+  const lines = c.lines.map((l) => `<li>${esc(l)}</li>`).join("");
+  const bar = c.progress == null ? "" : `<div class="bar"><b style="width:${c.progress}%"></b></div>`;
+  const pill = `<span class="pill"><i></i>${LABEL[c.state]}</span>`;
+  if (c.key === "rick") {
+    return `<div class="card rick ${c.state} clickable" onclick="openCrew('rick')" title="Click for Rick's buttons">
+      <div class="face">${face("rick")}</div>
+      <div class="rick-body"><div class="name">${esc(c.name)}</div><div class="role">${esc(c.role)}</div>
+        <div class="quote">“${esc(QUOTES[quoteIx])}”</div>
+
+        <div class="bubble">${esc(c.doing)}</div><ul>${lines}</ul></div>${pill}
+        <button class="rickbtn" onclick="event.stopPropagation(); rickUpdate(this)" ${rickBusyUntil > Date.now() ? "disabled" : ""} title="Rick speaks a crew status update (about a minute)">${rickBusyUntil > Date.now() ? "🎙 THINKING…" : "🎙 UPDATE"}</button></div>`;
+  }
+  return `<div class="card ${c.state} clickable" onclick="openCrew('${c.key}')" title="Click for ${esc(c.name)}'s buttons">${pill}
+    <div class="top"><div class="face">${face(c.key)}</div>
+      <div><div class="name">${esc(c.name)}</div><div class="role">${esc(c.role)}</div></div></div>
+    <div class="bubble">${esc(c.doing)}</div><ul>${lines}</ul>${bar}</div>`;
+}
+
+$("claudeFace").innerHTML = face("claude");
+$("claude").addEventListener("click", async () => {
+  $("claudeGo").textContent = "Opening…";
+  try { await fetch("/api/launch/claude", { method: "POST", headers: { "X-Crew": "1" } }); } catch (e) {}
+  setTimeout(() => ($("claudeGo").textContent = "▶ Open Claude"), 2500);
+});
+$("freeAI").addEventListener("click", async () => {
+  $("freeAIGo").textContent = "Opening…";
+  try { await fetch("/api/launch/openwebui", { method: "POST", headers: { "X-Crew": "1" } }); } catch (e) {}
+  setTimeout(() => ($("freeAIGo").textContent = "▶ Open WebUI"), 2500);
+});
+$("claudeDesk").addEventListener("click", async () => {
+  $("claudeDeskGo").textContent = "Opening…";
+  try { await fetch("/api/launch/claude-desktop", { method: "POST", headers: { "X-Crew": "1" } }); } catch (e) {}
+  setTimeout(() => ($("claudeDeskGo").textContent = "▶ Open Desktop Claude"), 2500);
+});
+/* ---------- Free AI Lab ---------- */
+const STATE = { queued: "In line", waiting: "Waiting for memory", running: "Working…", done: "Done ✓", failed: "Didn't work" };
+const files = {};
+function setLab(on) {
+  document.body.classList.toggle("lab", on);
+  $("labbtn").textContent = on ? "👥 CREW" : "🧪 AI LAB";
+  try { localStorage.setItem("crew-lab", on ? "1" : "0"); } catch (e) {}
+  if (on) refreshJobs();
+}
+$("labbtn").addEventListener("click", () => setLab(!document.body.classList.contains("lab")));
+
+async function loadTools() {
+  const d = await (await fetch("/api/lab/tools")).json();
+  $("tools").innerHTML = d.tools.map((t) => `<div class="tool" data-k="${t.key}">
+    <div class="t"><span class="e">${t.emoji}</span><div><div class="n">${esc(t.name)}</div><div class="tm">⏱ ${esc(t.time)}${t.heavy ? ' · <span class="heavy">heavy</span>' : ""}</div></div></div>
+    ${t.input === "text"
+      ? `<textarea placeholder="${esc(t.hint)}"></textarea>`
+      : `<label class="drop"><input type="file" accept="${esc(t.accept)}" hidden><span>${esc(t.hint)}<br>(or click to pick)</span></label>`}
+    <button class="gobtn">▶ Go</button></div>`).join("");
+  document.querySelectorAll(".tool").forEach((el) => {
+    const k = el.dataset.k, drop = el.querySelector(".drop");
+    if (drop) {
+      const inp = drop.querySelector("input"), show = (f) => { files[k] = f; drop.classList.add("has"); drop.querySelector("span").textContent = "📎 " + f.name; };
+      inp.addEventListener("change", () => inp.files[0] && show(inp.files[0]));
+      drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+      drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+      drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); e.dataTransfer.files[0] && show(e.dataTransfer.files[0]); });
+    }
+    el.querySelector(".gobtn").addEventListener("click", async (ev) => {
+      const b = ev.currentTarget; b.disabled = true; b.textContent = "Sending…";
+      let r;
+      try {
+        if (drop) {
+          if (!files[k]) { r = { ok: false, error: "Drop a file first" }; }
+          else r = await (await fetch("/api/lab/upload", { method: "POST", body: files[k], headers: { "X-Crew": "1", "X-Tool": k, "X-Filename": encodeURIComponent(files[k].name) } })).json();
+        } else {
+          r = await (await fetch("/api/lab/run", { method: "POST", headers: { "X-Crew": "1", "Content-Type": "application/json" }, body: JSON.stringify({ tool: k, text: el.querySelector("textarea").value }) })).json();
+        }
+      } catch (e) { r = { ok: false, error: "Couldn't reach the lab" }; }
+      b.disabled = false; b.textContent = r.ok ? "✓ Sent!" : "▶ Go";
+      if (!r.ok) alert(r.error || "Something went wrong");
+      else { const ta = el.querySelector("textarea"); if (ta) ta.value = ""; setTimeout(() => (b.textContent = "▶ Go"), 2500); refreshJobs(); }
+    });
+  });
+}
+
+function mins(a, b) { const s = Math.round(((b || Date.now() / 1000) - a)); return s < 60 ? s + "s" : Math.floor(s / 60) + "m " + (s % 60) + "s"; }
+function resultHtml(r) {
+  const u = "/api/out?f=" + encodeURIComponent(r.path);
+  if (r.kind === "image") return `<a href="${u}" target="_blank"><img src="${u}" alt="${esc(r.name)}"></a>`;
+  if (r.kind === "audio") return `<div><div>${esc(r.name)}</div><audio controls src="${u}"></audio></div>`;
+  if (r.kind === "video") return `<video controls src="${u}"></video>`;
+  return `<a href="${u}" target="_blank">📄 ${esc(r.name)}</a>`;
+}
+async function refreshJobs() {
+  try {
+    const d = await (await fetch("/api/lab/jobs", { cache: "no-store" })).json();
+    $("labsub").textContent = `Free, private, on this laptop. One job at a time. Free memory: ${(d.free_mb / 1024).toFixed(1)} GB`;
+    $("jobs").innerHTML = d.jobs.slice(0, 8).map((j) => `<div class="job ${j.state}">
+      <div class="h"><span>${j.emoji}</span>${esc(j.name)}<span class="st">${STATE[j.state] || j.state}</span></div>
+      <div class="q">${esc(j.text || j.file)} ${j.started ? "· " + mins(j.started, j.ended) : ""}</div>
+      ${j.message ? `<div class="msg">${esc(j.message)}</div>` : ""}
+      ${j.results.length ? `<div class="res">${j.results.map(resultHtml).join("")}<button data-p="${esc(j.results[0].path)}">📂 Open folder</button></div>` : ""}
+    </div>`).join("");
+    document.querySelectorAll(".res button[data-p]").forEach((b) => b.onclick = () =>
+      fetch("/api/lab/open", { method: "POST", headers: { "X-Crew": "1", "Content-Type": "application/json" }, body: JSON.stringify({ path: b.dataset.p }) }));
+  } catch (e) {}
+}
+$("askgo").addEventListener("click", async () => {
+  const q = $("askq").value.trim(), b = $("askgo");
+  b.textContent = "Opening Claude…";
+  try { await fetch("/api/launch/claude", { method: "POST", headers: { "X-Crew": "1", "Content-Type": "application/json" }, body: JSON.stringify({ text: q }) }); } catch (e) {}
+  $("askq").value = ""; setTimeout(() => (b.textContent = "🧠 Ask Claude"), 2500);
+});
+$("askfgo").addEventListener("click", async () => {
+  const q = $("askfq").value.trim(), b = $("askfgo"), a = $("askfans");
+  if (!q) return;
+  b.textContent = "Thinking…"; b.disabled = true; a.style.display = "block"; a.textContent = "…";
+  try {
+    const r = await (await fetch("/api/free-ask", { method: "POST", headers: { "X-Crew": "1", "Content-Type": "application/json" },
+      body: JSON.stringify({ text: q, job: $("askfjob").value }) })).json();
+    a.textContent = r.answer || r.error || "No answer.";
+  } catch (e) { a.textContent = "Couldn't reach Mission Control."; }
+  b.textContent = "🆓 Ask"; b.disabled = false;
+});
+async function refreshBrains() {
+  try {
+    const r = await (await fetch("/api/brains", { cache: "no-store" })).json();
+    $("brains").innerHTML = r.map((x) => `<span class="${x.up ? "up" : "down"}" title="${esc(x.note || "")}">${esc(x.name)}</span>`).join("");
+  } catch (e) {}
+}
+refreshBrains(); setInterval(refreshBrains, 120000);
+loadTools();
+let startLab = false;
+try { startLab = localStorage.getItem("crew-lab") === "1"; } catch (e) {}
+if (/[?&]lab/.test(location.search)) startLab = true;
+setLab(startLab);
+setInterval(() => document.body.classList.contains("lab") && refreshJobs(), 3000);
+
+const ACTIONS = {
+  rick: [["upd", "🎙 Crew update"]],
+  morty: [["upd", "🎙 Today's lesson"], ["act:open-course", "📖 Open my Linux course"]],
+  summer: [["upd", "🎙 Inbox update"], ["act:open-inbox", "📥 Open my Inbox"]],
+  birdperson: [["upd", "🎙 Backup report"], ["act:backup-now", "💾 Back up now"], ["act:backup-dismiss", "🔕 Dismiss reminder"]],
+  beth: [["upd", "🎙 Home lab update"], ["url:http://127.0.0.1:2283/", "📸 Immich"], ["url:http://127.0.0.1:8096/", "🎬 Jellyfin"]],
+  gearhead: [["upd", "🎙 Device check"]],
+  "noob-noob": [["upd", "🎙 Seagate report"], ["url:http://127.0.0.1:8085/", "🗂️ Browse the Seagate"]],
+  unity: [["act:brave-search", "🔎 Search privately"], ["act:open-brave", "🦊 Open Firefox"], ["url:http://127.0.0.1:8888/", "🔎 SearXNG"]],
+  "mr-meeseeks": [["act:meeseeks", "✍️ Give him the job"]],
+  snoopy: [["upd", "🎙 Free AI report"], ["act:open-webui", "💬 Open WebUI"], ["act:free-ram", "🧹 Free up RAM"], ["url:http://127.0.0.1:8090/", "📚 Library"], ["url:http://127.0.0.1:8091/", "🗺️ Maps"]],
+  woodstock: [["act:open-firefox", "🦊 Open Firefox"]],
+};
+function openCrew(key) {
+  if (key === "woodstock") {  // Woodstock's whole job: one click to Firefox
+    fetch("/api/crew-action", { method: "POST", headers: { "X-Crew": "1", "Content-Type": "application/json" }, body: JSON.stringify({ action: "open-firefox" }) });
+    return;
+  }
+  const c = lastCrew.find((x) => x.key === key); if (!c) return;
+  const acts = ACTIONS[key] || [];
+  $("pop").innerHTML = `<button class="x" onclick="closeCrew()">×</button>
+    <div class="top"><div class="face">${face(key)}</div><div><div class="name">${esc(c.name)}</div><div class="role">${esc(c.role)}</div></div></div>
+    <ul>${c.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
+    ${key === "mr-meeseeks" || key === "unity" ? `<textarea id="poptext" placeholder="${key === "unity" ? "Search the web privately, e.g. raspberry pi 5 price" : "His ONE job, e.g. write a grocery list for tacos"}"></textarea>` : ""}
+    <div class="acts">${acts.map(([a, label], i) => `<button class="gobtn ${i ? "alt" : ""}" data-a="${a}">${label}</button>`).join("")}</div>
+    <div class="note" id="popnote"></div>`;
+  $("pop").querySelectorAll("[data-a]").forEach((b) => b.onclick = () => crewDo(key, b.dataset.a, b));
+  $("crewpop").classList.add("on");
+}
+function closeCrew() { $("crewpop").classList.remove("on"); }
+document.addEventListener("keydown", (e) => e.key === "Escape" && closeCrew());
+async function crewDo(key, a, b) {
+  const note = (t) => ($("popnote").textContent = t), H = { "X-Crew": "1", "Content-Type": "application/json" };
+  const text = ($("poptext") || {}).value || "";
+  try {
+    if (a === "upd") {
+      if (key === "rick") rickBusyUntil = Date.now() + 90000;
+      await fetch(key === "rick" ? "/api/rick-update" : "/api/crew-update/" + key, { method: "POST", headers: H });
+      note("🎙 On it! Listen in about a minute. It'll also be in today's Daily note.");
+    } else if (a.startsWith("url:")) { window.open(a.slice(4), "_blank"); }
+    else if (a === "claude") {
+      await fetch("/api/launch/claude", { method: "POST", headers: H, body: JSON.stringify({ text }) }); note("🧠 Opening Claude…");
+    } else if (a.startsWith("act:")) {
+      const r = await (await fetch("/api/crew-action", { method: "POST", headers: H, body: JSON.stringify({ action: a.slice(4), text }) })).json();
+      note(r.ok ? (r.note || (a === "act:meeseeks" ? "Caaan do! 🔵 He'll speak when done, and it lands in today's Daily note." : a.startsWith("act:brave") || a === "act:open-brave" ? "🦊 Opening in Firefox…" : "✓ Done")) : (r.note || "Didn't work"));
+    }
+  } catch (e) { note("Couldn't reach Mission Control."); }
+}
+let rickBusyUntil = 0;
+async function rickUpdate(b) {
+  rickBusyUntil = Date.now() + 90000;
+  b.textContent = "🎙 THINKING…"; b.disabled = true;
+  try { await fetch("/api/rick-update", { method: "POST", headers: { "X-Crew": "1" } }); } catch (e) {}
+}
+let lastCrew = [], picked = null;
+function showPicked() {
+  const c = lastCrew.find((x) => x.key === picked);
+  $("picked").innerHTML = c ? card(c) : "";
+}
+
+async function refreshApps() {
+  try {
+    const apps = await (await fetch("/api/apps", { cache: "no-store" })).json();
+    $("pad").innerHTML = apps.map((a) => `<a class="${a.up ? "up" : "down"}" href="${a.url}" target="_blank" rel="noopener" title="${esc(a.what)}${a.up ? "" : " (not running)"}">
+      <span class="dot"></span><span class="e">${a.emoji}</span>${esc(a.name)}</a>`).join("");
+  } catch (e) {}
+}
+
+function setMode(pixel) {
+  document.body.classList.toggle("pixel", pixel);
+  $("mode").textContent = pixel ? "COMIC MODE" : "PIXEL MODE";
+  try { localStorage.setItem("crew-mode", pixel ? "pixel" : "comic"); } catch (e) {}
+}
+$("mode").addEventListener("click", () => setMode(!document.body.classList.contains("pixel")));
+let startPixel = false;
+try { startPixel = localStorage.getItem("crew-mode") === "pixel"; } catch (e) {}
+if (/[?&]pixel/.test(location.search)) startPixel = true;
+setMode(startPixel);
+PixelStation.mount($("pixel"), (key) => { picked = key; showPicked(); });
+
+async function refresh() {
+  try {
+    const d = await (await fetch("/api/status", { cache: "no-store" })).json();
+    $("grid").innerHTML = d.crew.map(card).join("");
+    lastCrew = d.crew; PixelStation.update(d.crew); showPicked();
+    if (!window._scrolledTop) { $("grid").scrollTop = 0; window._scrolledTop = true; }
+    const working = d.crew.filter((c) => c.state !== "idle").length;
+    $("sub").textContent = working ? `${working} crew member${working > 1 ? "s" : ""} on the job` : "Everyone's standing by";
+    $("sub").classList.remove("offline");
+    $("feed").innerHTML = d.feed.length
+      ? d.feed.map((e) => `<div class="ev"><div class="mini">${face(e.agent)}</div>
+          <div><div>${esc(e.task || e.agent)}</div>
+          <div class="t"><span class="s ${e.done ? "" : "go"}">${e.done ? "✓ done" : "▶ started"}</span> · ${esc(e.agent)} · ${ago(e.t, d.now)}</div></div></div>`).join("")
+      : `<div class="empty"><div class="bigface">${face("mr-meeseeks")}</div>No crew jobs yet.<br>Ooh-wee! Give the crew something to do!</div>`;
+  } catch (e) {
+    $("sub").textContent = "Dashboard server is off. Run crew-dashboard to start it.";
+    $("sub").classList.add("offline");
+  }
+}
+
+function tick() {
+  const n = new Date();
+  $("time").textContent = n.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  $("date").textContent = n.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+}
+
+tick(); refresh(); refreshApps();
+setInterval(refreshApps, 10000);
+setInterval(tick, 1000);
+
+// Claude plan meter: % of the 5-hour session and of the week used (Mission Control asks Anthropic every 2 minutes).
+$("usageFace").innerHTML = face("claude");
+function usageRow(id, u) {
+  const bar = $(id), pct = u ? Math.round(u.utilization) : null;
+  bar.style.width = (pct ?? 0) + "%";
+  bar.className = pct >= 90 ? "hot" : pct >= 70 ? "warn" : "";
+  $(id + "p").textContent = pct === null ? "?" : pct + "%";
+  if (!u || !u.resets_at) { $(id + "r").textContent = ""; return; }
+  const r = new Date(u.resets_at), sameDay = r.toDateString() === new Date().toDateString();
+  $(id + "r").textContent = "resets " + (sameDay ? "" : r.toLocaleDateString([], { weekday: "short" }) + " ") +
+    r.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+async function refreshUsage() {
+  try {
+    const u = await (await fetch("/api/claude-usage", { cache: "no-store" })).json();
+    if (u.error) { $("u5r").textContent = u.error; return; }
+    usageRow("u5", u.five_hour); usageRow("u7", u.seven_day);
+  } catch (e) {}
+}
+refreshUsage(); setInterval(refreshUsage, 60000);
+setInterval(refresh, 3000);
+setInterval(() => { quoteIx = (quoteIx + 1) % QUOTES.length; }, 20000);
+
+// Launch pad: the mouse wheel scrolls it sideways, and click-and-drag pans it (Rabbid, 2026-10-07).
+(() => {
+  const pad = document.getElementById("pad");
+  pad.addEventListener("wheel", (e) => {
+    if (pad.scrollWidth <= pad.clientWidth) return;
+    pad.scrollLeft += Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    e.preventDefault();
+  }, { passive: false });
+  let down = false, startX = 0, startLeft = 0, moved = false;
+  pad.addEventListener("mousedown", (e) => { if (e.button) return; down = true; moved = false; startX = e.clientX; startLeft = pad.scrollLeft; e.preventDefault(); });
+  window.addEventListener("mousemove", (e) => {
+    if (!down) return;
+    const dx = e.clientX - startX;
+    if (Math.abs(dx) > 5) { moved = true; pad.classList.add("dragging"); }
+    if (moved) pad.scrollLeft = startLeft - dx;
+  });
+  window.addEventListener("mouseup", () => { down = false; setTimeout(() => pad.classList.remove("dragging"), 0); });
+  pad.addEventListener("click", (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+})();
+
+// Mission Control lives in a toolbar-free Firefox window (no tab bar), so links that would open a new tab
+// open in Rabbid's main Firefox instead (Rabbid, 2026-10-07).
+(() => {
+  const openOutside = (url) => fetch("/api/crew-action", { method: "POST", headers: { "X-Crew": "1", "Content-Type": "application/json" },
+                                                         body: JSON.stringify({ action: "open-url", text: new URL(url, location.href).href }) });
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest && e.target.closest("a[href]");
+    if (!a || e.defaultPrevented) return;
+    const href = new URL(a.getAttribute("href"), location.href);
+    if (!/^https?:$/.test(href.protocol)) return;
+    if (a.target === "_blank" || href.origin !== location.origin) { e.preventDefault(); openOutside(href.href); }
+  });
+  const nativeOpen = window.open.bind(window);
+  window.open = (url, ...rest) => {
+    try { const u = new URL(url, location.href); if (/^https?:$/.test(u.protocol)) { openOutside(u.href); return null; } } catch (err) {}
+    return nativeOpen(url, ...rest);
+  };
+})();
+</script>
+</body>
+</html>

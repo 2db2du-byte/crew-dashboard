@@ -26,7 +26,7 @@ CREW = [
     ("mr-meeseeks", "Mr. Meeseeks", "🔵", "One-off jobs"),
     ("snoopy", "Snoopy", "🐶", "Free AIs keeper"),
     ("woodstock", "Woodstock", "🐤", "Firefox browser"),
-    ("poopybutthole", "Mr. Poopybutthole", "⭐", "GitHub hype man"),
+    ("poopybutthole", "Mr. Poopybutthole", "⭐", "Hype man · online presence"),
 ]
 
 
@@ -316,6 +316,15 @@ def github_status():
             problems.append("new changes waiting to be uploaded (" + ", ".join(stale) + ")")
     except Exception as e:
         lines.append(f"📦 Couldn't check the public copies ({str(e)[:50]})")
+    # Every site up and linking to every other site (GitHub, homepage, Spaces, Hugging Face, Ollama, Bluesky).
+    pc = run([str(HOME / ".local/bin/presence-check")], timeout=120)
+    if pc:
+        bsky = [l for l in pc.splitlines() if "Bluesky profile" in l]
+        if bsky:
+            lines.append("🦋 " + bsky[0].lstrip("✅⚠️❌ ").replace("Bluesky profile", "Bluesky").strip())
+        broken = [l.lstrip("⚠️❌ ") for l in pc.splitlines() if l.startswith(("⚠", "❌"))]
+        lines.append("🔗 Cross-links: " + ("every site links to every other site" if not broken else f"{len(broken)} problem(s)"))
+        problems += broken
     lines.append("✅ Looking bad-ass" if not problems else "⚠️ Needs love: " + "; ".join(problems))
     _gh.update(t=time.time(), data={"lines": lines})
     return _gh["data"]

@@ -26,6 +26,7 @@ CREW = [
     ("mr-meeseeks", "Mr. Meeseeks", "🔵", "One-off jobs"),
     ("snoopy", "Snoopy", "🐶", "Free AIs keeper"),
     ("woodstock", "Woodstock", "🐤", "Firefox browser"),
+    ("poopybutthole", "Mr. Poopybutthole", "⭐", "GitHub hype man"),
 ]
 
 
@@ -239,6 +240,69 @@ def firefox_status():
                       "🎵 Apple Music is on the bookmarks bar"]}
 
 
+GH_USER = "2db2du-byte"
+_gh = {"t": 0, "data": None}
+
+
+def github_status():
+    """Mr. Poopybutthole's booth: Rabbid's public GitHub. Public API only (no login), cached 30 minutes."""
+    if time.time() - _gh["t"] < 1800 and _gh["data"]:
+        return _gh["data"]
+    lines, problems = [], []
+    def get(url, timeout=8):
+        req = urllib.request.Request(url, headers={"User-Agent": "mission-control", "Accept": "application/vnd.github+json"})
+        return json.load(urllib.request.urlopen(req, timeout=timeout))
+    try:
+        user = get(f"https://api.github.com/users/{GH_USER}")
+        repos = get(f"https://api.github.com/users/{GH_USER}/repos?per_page=100")
+        stars = sum(r.get("stargazers_count", 0) for r in repos)
+        forks = sum(r.get("forks_count", 0) for r in repos)
+        lines.append(f"🐙 {user.get('public_repos', len(repos))} public repos · ⭐ {stars} stars · 🍴 {forks} forks · 👥 {user.get('followers', 0)} followers")
+        bare = [r["name"] for r in repos if not r.get("description") or not r.get("topics")]
+        if bare:
+            problems.append("missing a description or tags: " + ", ".join(bare))
+        try:
+            snake = get(f"https://api.github.com/repos/{GH_USER}/{GH_USER}/commits?sha=output&per_page=1")[0]["commit"]["committer"]["date"]
+            age = (time.time() - time.mktime(time.strptime(snake, "%Y-%m-%dT%H:%M:%SZ")) + time.timezone) / 3600
+            lines.append(f"🐍 Snake redrawn {age:.0f} h ago")
+            if age > 36:
+                problems.append(f"the contribution snake hasn't redrawn in {age:.0f} hours")
+        except Exception:
+            problems.append("couldn't find the contribution snake")
+    except Exception as e:
+        lines.append(f"❌ GitHub didn't answer ({str(e)[:60]})")
+    try:
+        code = urllib.request.urlopen(f"https://{GH_USER}.github.io/", timeout=8).status
+        lines.append("🌐 Homepage: " + ("up" if code == 200 else f"HTTP {code}"))
+        if code != 200:
+            problems.append("the homepage is down")
+    except Exception:
+        lines.append("🌐 Homepage: down")
+        problems.append("the homepage is down")
+    # Local projects changed since their cleaned public copies were last published?
+    try:
+        import importlib.machinery
+        ex = importlib.machinery.SourceFileLoader("publish_export", str(HOME / "Projects/publish/export.py")).load_module()
+        stale = []
+        for repo, files in ex.REPOS.items():
+            out = ex.OUT / repo / ".git"
+            last = float(run(["git", "-C", str(ex.OUT / repo), "log", "-1", "--format=%ct"]) or 0) if out.exists() else 0
+            for spec in files:
+                src = spec.split(":")[0]
+                src = Path(src) if src.startswith("/") else ex.P / src
+                if src.exists() and src.stat().st_mtime > last + 60:
+                    stale.append(repo)
+                    break
+        lines.append("📦 Public copies: " + ("all up to date" if not stale else "changed on the laptop since last upload: " + ", ".join(stale)))
+        if stale:
+            problems.append("new changes waiting to be uploaded (" + ", ".join(stale) + ")")
+    except Exception as e:
+        lines.append(f"📦 Couldn't check the public copies ({str(e)[:50]})")
+    lines.append("✅ Looking bad-ass" if not problems else "⚠️ Needs love: " + "; ".join(problems))
+    _gh.update(t=time.time(), data={"lines": lines})
+    return _gh["data"]
+
+
 def devices():
     lines = []
     adb = run(["adb", "devices"])
@@ -333,7 +397,7 @@ def status():
     rick_live = rick_running()
     domain = {"birdperson": backup(), "beth": homelab(), "morty": course(),
               "summer": brain(), "gearhead": devices(), "noob-noob": seagate(), "unity": web(),
-              "snoopy": free_ais(), "woodstock": firefox_status()}
+              "snoopy": free_ais(), "woodstock": firefox_status(), "poopybutthole": github_status()}
     crew = []
     for key, name, emoji, role in CREW:
         d = domain.get(key, {})
@@ -423,6 +487,11 @@ def facts(agent):
             f.append("Folders on the Seagate: " + ", ".join(sorted(p.name for p in Path(SEAGATE).iterdir() if p.name != "lost+found")))
     elif agent == "snoopy":
         f += free_ais()["lines"]
+    elif agent == "poopybutthole":
+        _gh["t"] = 0
+        f += github_status()["lines"]
+        f.append("Rabbid's GitHub is github.com/2db2du-byte and his homepage is 2db2du-byte.github.io. The public projects are cleaned "
+                 "copies of what runs on his laptop; when they're out of date, Claude refreshes them on request (it scans out personal info first).")
         f.append("Open WebUI has 15 free models with Rabbid's Knowledge tool (library, notes, news, time, calculator), "
                  "Kokoro voice and FastSD pictures. Joshua is the voice butler. The library updates itself monthly.")
     elif agent == "rick":

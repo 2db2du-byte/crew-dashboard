@@ -141,6 +141,17 @@ window.AVATARS = {
     <path d="M48 104 L44 116 M72 104 L76 116" fill="none" ${O}/>
   </svg>`,
 
+  poopybutthole: `<svg viewBox="0 0 120 120">
+    <ellipse cx="60" cy="74" rx="34" ry="38" fill="#f2c98a" ${O}/>
+    <path d="M34 34 L86 34 L86 38 L34 38 Z" fill="#222" ${O}/>
+    <rect x="42" y="8" width="36" height="28" rx="3" fill="#222" ${O}/>
+    <rect x="42" y="27" width="36" height="5" fill="#c8102e"/>
+    ${eye(48, 62, 10, 1, 0)}${eye(72, 62, 10, -1, 0)}
+    <path d="M44 84 Q60 100 76 84" fill="#7a2232" ${O}/>
+    <path d="M47 85 L73 85 L71 89 L49 89 Z" fill="#fff"/>
+    <path d="M28 82 Q14 74 18 62" fill="none" ${O}/><path d="M92 82 Q106 74 102 62" fill="none" ${O}/>
+  </svg>`,
+
   "mr-meeseeks": `<svg viewBox="0 0 120 120">
     <path d="M34 120 L38 98 Q60 92 82 98 L86 120 Z" fill="#7ec8e8" ${O}/>
     <ellipse cx="60" cy="56" rx="30" ry="42" fill="#7ec8e8" ${O}/>

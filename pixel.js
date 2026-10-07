@@ -57,6 +57,11 @@
       rows: { 0: "............", 1: "...ssssss...", 2: "..ssssssss..", 3: ".hsssssssss.", 4: ".hsskssssss.",
               5: ".hssssssssss", 6: "..ssssssmmsk", 7: "...ssssss...", 8: "...cccccc...", 9: "..tttttttt.." },
     },
+    poopybutthole: {
+      pal: { h: "#222", s: "#f2c98a", w: "#fff", k: "#111", m: "#7a2232", t: "#f2c98a", c: "#c8102e", p: "#f2c98a", b: "#e0b070" },
+      rows: { 0: "....hhhh....", 1: "....hhhh....", 2: "...cccccc...", 3: "..hhhhhhhh..", 4: "..swksswks..",
+              5: "..ssssssss..", 6: "..ssmmmmss..", 7: "...ssssss..." },
+    },
     woodstock: {
       pal: { h: "#c9a92a", s: "#f6d743", w: "#f6d743", k: "#111", m: "#e8a33c", t: "#f6d743", p: "#f6d743", b: "#e8a33c" },
       rows: { 0: "....h.h.h...", 1: "....ssssh...", 2: "...ssssss...", 3: "..ssssssss..", 4: "..sskssks...",
@@ -76,6 +81,7 @@
     ["birdperson", "THE VAULT", "#1d2a33"], ["beth", "BETH'S CLINIC", "#331a1c"], ["gearhead", "GEAR GARAGE", "#2a2a2e"],
     ["unity", "WEB DECK", "#26193a"], ["noob-noob", "BASEMENT", "#18302c"], ["mr-meeseeks", "MEESEEKS BOX", "#14283a"],
     ["snoopy", "THE DOGHOUSE", "#331616"], ["woodstock", "THE NEST", "#2e2a12"],
+    ["poopybutthole", "HYPE BOOTH", "#2e1a33"],
   ];
   const RW = 80, RH = 56;
   const rooms = ROOMS.map(([key, label, color], i) => ({

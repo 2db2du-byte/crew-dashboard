@@ -241,11 +241,14 @@ def firefox_status():
 
 
 GH_USER = "2db2du-byte"
+HF_USER = "RabbidRaccoon"
+HF_SPACES = ("rabbids-lab", "ask-rick")
+HF_COLLECTION = "RabbidRaccoon/free-ais-on-a-laptop-with-no-gpu-6ac694416841d750eb0872df"
 _gh = {"t": 0, "data": None}
 
 
 def github_status():
-    """Mr. Poopybutthole's booth: Rabbid's public GitHub. Public API only (no login), cached 30 minutes."""
+    """Mr. Poopybutthole's booth: Rabbid's public GitHub + Hugging Face. Public APIs only (no login), cached 30 minutes."""
     if time.time() - _gh["t"] < 1800 and _gh["data"]:
         return _gh["data"]
     lines, problems = [], []
@@ -271,6 +274,21 @@ def github_status():
             problems.append("couldn't find the contribution snake")
     except Exception as e:
         lines.append(f"❌ GitHub didn't answer ({str(e)[:60]})")
+    # Hugging Face: the profile, both Spaces (must be RUNNING) and the Collection.
+    try:
+        hf = get(f"https://huggingface.co/api/users/{HF_USER}/overview")
+        spaces = get(f"https://huggingface.co/api/spaces?author={HF_USER}&full=true")
+        likes = sum(sp.get("likes", 0) for sp in spaces)
+        lines.append(f"🤗 Hugging Face: {len(spaces)} Spaces · ❤️ {likes} likes · 👥 {hf.get('numFollowers', 0)} followers")
+        for name in HF_SPACES:
+            st = get(f"https://huggingface.co/api/spaces/{HF_USER}/{name}").get("runtime", {}).get("stage", "?")
+            if st != "RUNNING":
+                problems.append(f"the {name} Space is {st}")
+        coll = get(f"https://huggingface.co/api/collections/{HF_COLLECTION}")
+        if len(coll.get("items", [])) < 15:
+            problems.append("the Hugging Face collection lost items")
+    except Exception as e:
+        lines.append(f"🤗 Hugging Face didn't answer ({str(e)[:50]})")
     try:
         code = urllib.request.urlopen(f"https://{GH_USER}.github.io/", timeout=8).status
         lines.append("🌐 Homepage: " + ("up" if code == 200 else f"HTTP {code}"))
@@ -490,7 +508,8 @@ def facts(agent):
     elif agent == "poopybutthole":
         _gh["t"] = 0
         f += github_status()["lines"]
-        f.append("Rabbid's GitHub is github.com/2db2du-byte and his homepage is 2db2du-byte.github.io. The public projects are cleaned "
+        f.append("Rabbid's GitHub is github.com/2db2du-byte, his homepage is 2db2du-byte.github.io, and his Hugging Face is RabbidRaccoon "
+                 "(Spaces: Rabbid's Lab and Ask Rick, plus a collection of the free AIs he runs). The public projects are cleaned "
                  "copies of what runs on his laptop; when they're out of date, Claude refreshes them on request (it scans out personal info first).")
         f.append("Open WebUI has 15 free models with Rabbid's Knowledge tool (library, notes, news, time, calculator), "
                  "Kokoro voice and FastSD pictures. Joshua is the voice butler. The library updates itself monthly.")

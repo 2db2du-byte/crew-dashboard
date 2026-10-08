@@ -1,7 +1,7 @@
 // Pixel-art mode for Mission Control: the crew living on "Starbase R-137".
 // Everything is drawn on a small virtual canvas (360x216) and scaled up with crisp pixels.
 (function () {
-  const VW = 360, VH = 216;
+  const VW = 360, VH = 276;
   const FONT = '"Press Start 2P", monospace';
 
   // ---------- sprites (12x16, one letter per pixel, "." = see-through) ----------
@@ -62,6 +62,10 @@
       rows: { 0: "....hhhh....", 1: "....hhhh....", 2: "...cccccc...", 3: "..hhhhhhhh..", 4: "..swksswks..",
               5: "..ssssssss..", 6: "..ssmmmmss..", 7: "...ssssss..." },
     },
+    linus: {
+      pal: { h: "#c9a26a", s: "#f4dac4", w: "#fff", k: "#111", m: "#b04a4a", t: "#c43c3c", c: "#7fb3e0", p: "#3a4a8a", b: "#222" },
+      rows: { 0: "............", 1: "............", 2: "...hhhhhh...", 9: "..tttttttt..", 10: "ctttttttttt.", 11: "ccttttttts..", 12: "c.tttttttt.." },
+    },
     woodstock: {
       pal: { h: "#c9a92a", s: "#f6d743", w: "#f6d743", k: "#111", m: "#e8a33c", t: "#f6d743", p: "#f6d743", b: "#e8a33c" },
       rows: { 0: "....h.h.h...", 1: "....ssssh...", 2: "...ssssss...", 3: "..ssssssss..", 4: "..sskssks...",
@@ -81,7 +85,7 @@
     ["birdperson", "THE VAULT", "#1d2a33"], ["beth", "BETH'S CLINIC", "#331a1c"], ["gearhead", "GEAR GARAGE", "#2a2a2e"],
     ["unity", "WEB DECK", "#26193a"], ["noob-noob", "BASEMENT", "#18302c"], ["mr-meeseeks", "MEESEEKS BOX", "#14283a"],
     ["snoopy", "THE DOGHOUSE", "#331616"], ["woodstock", "THE NEST", "#2e2a12"],
-    ["poopybutthole", "HYPE BOOTH", "#2e1a33"],
+    ["poopybutthole", "HYPE BOOTH", "#2e1a33"], ["linus", "SECURITY LAB", "#14302a"],
   ];
   const RW = 80, RH = 56;
   const rooms = ROOMS.map(([key, label, color], i) => ({

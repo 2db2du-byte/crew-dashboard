@@ -152,6 +152,17 @@ window.AVATARS = {
     <path d="M28 82 Q14 74 18 62" fill="none" ${O}/><path d="M92 82 Q106 74 102 62" fill="none" ${O}/>
   </svg>`,
 
+  linus: `<svg viewBox="0 0 120 120">
+    <path d="M14 120 Q10 92 30 90 L90 90 Q110 92 106 120 Z" fill="#7fb3e0" ${O}/>
+    <path d="M30 90 L90 90 L86 120 L34 120 Z" fill="#c43c3c" ${O}/>
+    <path d="M34 98 L86 98 M34 106 L86 106 M34 114 L86 114" fill="none" stroke="#111" stroke-width="2.5"/>
+    <ellipse cx="60" cy="56" rx="30" ry="32" fill="#f4dac4" ${O}/>
+    <path d="M34 40 Q36 22 60 22 Q84 22 86 40 Q72 32 60 34 Q48 32 34 40 Z" fill="#c9a26a" ${O}/>
+    ${eye(50, 54, 7, 0, 1)}${eye(70, 54, 7, 0, 1)}
+    <path d="M52 74 Q60 80 68 74" fill="none" ${O}/>
+    <path d="M18 120 Q16 98 26 94" fill="none" ${O}/>
+  </svg>`,
+
   "mr-meeseeks": `<svg viewBox="0 0 120 120">
     <path d="M34 120 L38 98 Q60 92 82 98 L86 120 Z" fill="#7ec8e8" ${O}/>
     <ellipse cx="60" cy="56" rx="30" ry="42" fill="#7ec8e8" ${O}/>

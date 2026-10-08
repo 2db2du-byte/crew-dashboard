@@ -340,6 +340,14 @@
   .pop .acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
   .pop textarea { width: 100%; margin-top: 14px; min-height: 70px; resize: vertical; background: #0c141b; color: var(--text); border: 2px solid #27404f; border-radius: 12px; padding: 10px; font: 600 14px/1.35 "Nunito", sans-serif; }
   .pop .note { margin-top: 12px; color: var(--portal-2); font-weight: 800; min-height: 20px; }
+  .pop .school { margin-top: 16px; padding-top: 12px; border-top: 2px dashed #27404f; }
+  .pop .school h4 { margin: 0 0 4px; font: 900 15px "Nunito", sans-serif; color: var(--text); }
+  .pop .school .acts { margin-top: 8px; }
+  .pop .school textarea { min-height: 48px; margin-top: 8px; }
+  .pop .school details { margin-top: 8px; color: var(--dim); font-size: 13.5px; }
+  .pop .school summary { cursor: pointer; font-weight: 800; }
+  .pop .school li button { background: none; border: 0; cursor: pointer; color: var(--dim); }
+  .pop .school .sec { font-weight: 900; margin-top: 6px; color: var(--text); }
   .pop .x { float: right; cursor: pointer; background: none; border: 0; color: var(--dim); font-size: 26px; line-height: 1; }
   .gobtn.alt { background: #45c4d9; }
 
@@ -416,7 +424,7 @@
         <select id="askfjob" title="Which kind of brain">
           <option value="chat">⚡ Everyday</option><option value="smart">🧠 Think hard</option>
           <option value="coder">💻 Coder</option><option value="long">📜 Long documents</option>
-        </select><button class="gobtn" id="askfgo">🆓 Ask</button>
+        </select><button class="gobtn" id="askfgo">🆓 Ask</button><button class="gobtn alt" id="askfclear" style="display:none">🗑 Clear</button>
         <div class="ans" id="askfans"></div>
         <div class="brains" id="brains"></div>
       </div>
@@ -547,7 +555,7 @@ async function loadTools() {
       ? `<textarea placeholder="${esc(t.hint)}"></textarea>`
       : `<label class="drop"><input type="file" accept="${esc(t.accept)}" hidden><span>${esc(t.hint)}<br>(or click to pick)</span></label>`}
     <button class="gobtn">▶ Go</button></div>`).join("");
-  document.querySelectorAll(".tool").forEach((el) => {
+  $("tools").querySelectorAll(".tool").forEach((el) => {
     const k = el.dataset.k, drop = el.querySelector(".drop");
     if (drop) {
       const inp = drop.querySelector("input"), show = (f) => { files[k] = f; drop.classList.add("has"); drop.querySelector("span").textContent = "📎 " + f.name; };
@@ -611,7 +619,11 @@ $("askfgo").addEventListener("click", async () => {
       body: JSON.stringify({ text: q, job: $("askfjob").value }) })).json();
     a.textContent = r.answer || r.error || "No answer.";
   } catch (e) { a.textContent = "Couldn't reach Mission Control."; }
-  b.textContent = "🆓 Ask"; b.disabled = false;
+  b.textContent = "🆓 Ask"; b.disabled = false; $("askfclear").style.display = "";
+});
+$("askfclear").addEventListener("click", () => {
+  $("askfans").textContent = ""; $("askfans").style.display = "none";
+  $("askfq").value = ""; $("askfclear").style.display = "none";
 });
 async function refreshBrains() {
   try {
@@ -639,6 +651,7 @@ const ACTIONS = {
   "mr-meeseeks": [["act:meeseeks", "✍️ Give him the job"]],
   snoopy: [["upd", "🎙 Free AI report"], ["act:open-webui", "💬 Open WebUI"], ["act:free-ram", "🧹 Free up RAM"], ["url:http://127.0.0.1:8090/", "📚 Library"], ["url:http://127.0.0.1:8091/", "🗺️ Maps"]],
   woodstock: [["act:open-firefox", "🦊 Open Firefox"]],
+  linus: [["upd", "🎙 Today's lesson"], ["act:open-cyber", "📖 Open my course"], ["act:open-badges", "🏅 My badges"], ["act:credly-sync", "🔄 Check Credly"], ["url:https://www.credly.com/", "🎖️ Credly"], ["url:https://www.netacad.com/", "🎓 Cisco courses"]],
   poopybutthole: [["upd", "🎙 GitHub report"], ["url:https://github.com/2db2du-byte", "🐙 My GitHub"], ["url:https://2db2du-byte.github.io", "🌐 My homepage"]],
 };
 function openCrew(key) {
@@ -653,9 +666,37 @@ function openCrew(key) {
     <ul>${c.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
     ${key === "mr-meeseeks" || key === "unity" ? `<textarea id="poptext" placeholder="${key === "unity" ? "Search the web privately, e.g. raspberry pi 5 price" : "His ONE job, e.g. write a grocery list for tacos"}"></textarea>` : ""}
     <div class="acts">${acts.map(([a, label], i) => `<button class="gobtn ${i ? "alt" : ""}" data-a="${a}">${label}</button>`).join("")}</div>
-    <div class="note" id="popnote"></div>`;
+    <div class="note" id="popnote"></div>
+    ${key === "woodstock" ? "" : `<div class="school"><h4>🎓 Crew School · <span id="scount">…</span> · <a href="/school" target="_blank" style="color:var(--portal)">report card 📈</a></h4>
+      <div class="acts"><button class="gobtn alt" data-s="up">👍 Last job was good</button><button class="gobtn alt" data-s="down">👎 Last job was wrong</button><button class="gobtn alt" data-s="teach">🎓 Teach this rule</button></div>
+      <textarea id="teachtext" placeholder="What should ${esc(c.name)} do better? Type it, then press 👎 (fix it tonight) or 🎓 (always do this)."></textarea>
+      <details><summary>What ${esc(c.name)} knows</summary><div id="slist">…</div></details></div>`}`;
   $("pop").querySelectorAll("[data-a]").forEach((b) => b.onclick = () => crewDo(key, b.dataset.a, b));
+  $("pop").querySelectorAll("[data-s]").forEach((b) => b.onclick = () => schoolDo(key, b.dataset.s));
+  loadSchool(key);
   $("crewpop").classList.add("on");
+}
+async function loadSchool(key) {
+  try {
+    const d = await (await fetch("/api/school/" + key, { cache: "no-store" })).json();
+    $("scount").textContent = `${d.count} lessons · version ${d.version} · ${d.jobs} jobs remembered`;
+    const nice = { "From Rabbid": "Rules you taught", "Learned": "Learned from mistakes", "Studied": "Studied in the library" };
+    $("slist").innerHTML = Object.entries(d.lessons).filter(([, v]) => v.length).map(([s, v]) =>
+      `<div class="sec">${nice[s]}</div><ul>${v.map((x) => `<li>${esc(x)} <button title="Forget this" data-f="${esc(x.replace(/ _\(.*$/, ""))}">🗑</button></li>`).join("")}</ul>`).join("") + (d.diary.length ? `<div class="sec">Remembers</div><ul>${d.diary.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "") || "Nothing yet. Teach a rule, or 👎 a job and they'll study it tonight.";
+    $("slist").querySelectorAll("[data-f]").forEach((b) => b.onclick = () => schoolDo(key, "forget", b.dataset.f));
+  } catch (e) {}
+}
+async function schoolDo(key, what, text) {
+  const H = { "X-Crew": "1", "Content-Type": "application/json" };
+  text = text ?? $("teachtext").value.trim();
+  if (what === "teach" && !text) { $("popnote").textContent = "Type the rule first."; return; }
+  const url = what === "teach" ? "/api/teach" : what === "forget" ? "/api/forget" : "/api/feedback";
+  try {
+    const r = await (await fetch(url, { method: "POST", headers: H, body: JSON.stringify({ agent: key, text, good: what === "up" }) })).json();
+    $("popnote").textContent = r.note || (r.ok ? "✓" : "Didn't work");
+    if (r.ok && what !== "forget") $("teachtext").value = "";
+    loadSchool(key);
+  } catch (e) { $("popnote").textContent = "Couldn't reach Mission Control."; }
 }
 function closeCrew() { $("crewpop").classList.remove("on"); }
 document.addEventListener("keydown", (e) => e.key === "Escape" && closeCrew());

@@ -27,6 +27,7 @@ CREW = [
     ("snoopy", "Snoopy", "🐶", "Free AIs keeper"),
     ("woodstock", "Woodstock", "🐤", "Firefox browser"),
     ("poopybutthole", "Mr. Poopybutthole", "⭐", "Hype man · online presence"),
+    ("linus", "Linus", "🛡️", "Cybersecurity teacher · lab"),
 ]
 
 
@@ -100,13 +101,42 @@ def homelab():
             "lines": [("Running: " + ", ".join(apps)) if apps else "All home lab apps stopped"]}
 
 
-def course():
-    if not COURSE.exists():
+CYBER = HOME / "SecondBrain/1 Projects/Learn Cybersecurity.md"
+BADGES = HOME / "SecondBrain/3 Resources/My certificates and badges.md"
+
+
+def badges():
+    """(earned, studying) from Rabbid's trophy case note."""
+    if not BADGES.exists():
+        return [], []
+    sec, earned, studying = None, [], []
+    for line in BADGES.read_text().splitlines():
+        if line.startswith("## "):
+            sec = line[3:].strip().lower()
+        elif sec == "earned" and line.startswith("|") and not re.match(r"^\|\s*(Date|-)", line):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) >= 2 and cells[1]:
+                earned.append(cells[1])
+        elif sec == "currently studying" and line.startswith("- "):
+            studying.append(line[2:].strip())
+    return earned, studying
+
+
+def cyber():
+    d = course(CYBER)
+    earned, studying = badges()
+    d["lines"].append(f"🏅 {len(earned)} badge(s) earned" + (f" · studying: {studying[0]}" if studying else ""))
+    return d
+
+
+def course(path=COURSE):
+    if not path.exists():
         return {"lines": ["No course found"]}
     unit = task = None
     done = total = 0
-    for line in COURSE.read_text().splitlines():
-        if line.startswith("## Unit"):
+    heading = ""
+    for line in path.read_text().splitlines():
+        if line.startswith("## Unit") or line.startswith("## 🏅"):
             heading = line[3:]
         elif line.startswith("- [x]"):
             done += 1; total += 1
@@ -173,8 +203,17 @@ def free_ais():
     return {"busy": busy, "doing": "Fetching new books for the library" if busy else "", "lines": lines}
 
 
-def brain_json(system, user, local_model, timeout=600, job="free-chat"):
-    """A JSON answer from the free AI brains: cloud via the brain switch when online, the local model otherwise."""
+def brain_json(system, user, local_model, timeout=600, job="free-chat", agent=None):
+    """A JSON answer from the free AI brains: cloud via the brain switch when online, the local model otherwise.
+    With an agent, its Crew School lessons go into the prompt and the job is kept for the nightly coach."""
+    if agent:
+        role = next((r for k, _, _, r in CREW if k == agent), "")
+        out = brain_json(system + memory.block(agent, user, role), user, local_model, timeout, job)
+        try:
+            lessons.record_run(agent, system, user, local_model, job, out)
+        except OSError:
+            pass
+        return out
     msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     try:
         key = (HOME / ".config/crew/brain-switch.key").read_text().strip()
@@ -424,7 +463,7 @@ def status():
     rick_live = rick_running()
     domain = {"birdperson": backup(), "beth": homelab(), "morty": course(),
               "summer": brain(), "gearhead": devices(), "noob-noob": seagate(), "unity": web(),
-              "snoopy": free_ais(), "woodstock": firefox_status(), "poopybutthole": github_status()}
+              "snoopy": free_ais(), "woodstock": firefox_status(), "poopybutthole": github_status(), "linus": cyber()}
     crew = []
     for key, name, emoji, role in CREW:
         d = domain.get(key, {})
@@ -522,6 +561,12 @@ def facts(agent):
                  "copies of what runs on his laptop; when they're out of date, Claude refreshes them on request (it scans out personal info first).")
         f.append("Open WebUI has 15 free models with Rabbid's Knowledge tool (library, notes, news, time, calculator), "
                  "Kokoro voice and FastSD pictures. Joshua is the voice butler. The library updates itself monthly.")
+    elif agent == "linus":
+        f += cyber()["lines"]
+        earned, studying = badges()
+        f.append("Badges earned: " + (", ".join(earned) or "none yet"))
+        f.append("Currently studying: " + (", ".join(studying) or "nothing"))
+        f.append("Rabbid isn't job hunting: the free certificates and badges are proof he learned it. Everything is free.")
     elif agent == "rick":
         for c in status()["crew"]:
             f.append(f"{c['name']} ({c['role']}): " + "; ".join(c["lines"]))
@@ -577,6 +622,8 @@ def deliver(agent, data):
     return {"ok": True, "alert": alert, "note": str(note)}
 
 
+import lessons  # noqa: E402  (Crew School: lessons each member learns over time)
+import memory  # noqa: E402  (what a member remembers before each job)
 import lab  # noqa: E402  (Free AI Lab: runs the tools one at a time)
 import kb  # noqa: E402  (knowledge for the free AIs: offline library, notes, time, math)
 from urllib.parse import unquote, parse_qs, urlparse  # noqa: E402
@@ -601,7 +648,7 @@ def rick_update():
         log_event("rick", "Status update for Rabbid", "start")
         _cache["t"] = 0
         try:
-            answer = brain_json(RICK_SYSTEM, facts("rick"), "qwen3:8b", job="free-smart")
+            answer = brain_json(RICK_SYSTEM, facts("rick"), "qwen3:8b", job="free-smart", agent="rick")
         except Exception:
             answer = json.dumps({"report": "Couldn't reach the AI brain (Ollama).",
                                  "say": "Rabbid, my brain's offline. Ollama isn't answering. Tell Claude.", "alert": True})
@@ -633,12 +680,30 @@ def crew_update(agent):
         _cache["t"] = 0
         system = c["persona"] + " " + _crewdefs.COMMON + c["task"] + " Rabbid just clicked you and asked for this right now."
         try:
-            answer = brain_json(system, facts(agent), c["model"], timeout=900)
+            answer = brain_json(system, facts(agent), c["model"], timeout=900, agent=agent)
         except Exception:
             answer = json.dumps({"report": "Couldn't reach the AI brain (Ollama).", "say": "Ollama isn't answering. Tell Claude.", "alert": True})
         deliver(agent, {"answer": answer, "task": title, "speak": True, "always_alert": True})
     finally:
         lock.release()
+
+
+def who_is(system):
+    """Which crew member an n8n job is for, from the persona at the start of its prompt."""
+    if system.startswith("You are Mr. Meeseeks"):
+        return "mr-meeseeks"
+    for key, c in CREWDEFS.items():
+        if system.startswith(c["persona"][:60]):
+            return key
+    return None
+
+
+def school(agent):
+    les = lessons.read(agent)
+    mem = memory.MEM / f"{lessons.path(agent).stem}.md"
+    diary = [l[2:] for l in mem.read_text().splitlines() if l.startswith("- ")][-12:] if mem.exists() else []
+    return {"agent": agent, "lessons": les, "count": sum(len(v) for v in les.values()), "diary": diary,
+            "jobs": len(lessons.runs(agent)), "version": lessons.version(agent)}
 
 
 def crew_action(action, text=""):
@@ -654,6 +719,13 @@ def crew_action(action, text=""):
         return {"ok": True, "note": "🦊 Opening in Firefox…"}
     if action == "open-course":
         opn("obsidian://open?vault=SecondBrain&file=1%20Projects%2FLearn%20Linux")
+    elif action == "open-cyber":
+        opn("obsidian://open?vault=SecondBrain&file=1%20Projects%2FLearn%20Cybersecurity")
+    elif action == "credly-sync":
+        r = subprocess.run([str(HOME / ".local/bin/credly-sync")], capture_output=True, text=True, timeout=40)
+        return {"ok": r.returncode == 0, "note": (r.stdout or r.stderr).strip() or "Couldn't reach Credly."}
+    elif action == "open-badges":
+        opn("obsidian://open?vault=SecondBrain&file=3%20Resources%2FMy%20certificates%20and%20badges")
     elif action == "open-inbox":
         opn("obsidian://open?vault=SecondBrain&file=0%20Inbox%2FInbox")
     elif action == "backup-now":
@@ -772,6 +844,17 @@ class Handler(BaseHTTPRequestHandler):
             body, ctype = json.dumps(brains_status()).encode(), "application/json"
         elif self.path == "/api/claude-usage":
             body, ctype = json.dumps(claude_usage()).encode(), "application/json"
+        elif self.path.split("?")[0] == "/school":
+            body, ctype = (HERE / "school.html").read_bytes(), "text/html; charset=utf-8"
+        elif self.path == "/api/school-scores":
+            f = lessons.DATA / "school/scores.jsonl"
+            rows = [json.loads(l) for l in f.read_text().splitlines() if l.strip()] if f.exists() else []
+            body, ctype = json.dumps(rows).encode(), "application/json"
+        elif self.path.startswith("/api/school/"):
+            agent = self.path.split("/")[3].split("?")[0]
+            if agent not in NAMES:
+                self.send_error(404); return
+            body, ctype = json.dumps(school(agent)).encode(), "application/json"
         elif self.path == "/api/apps":
             body, ctype = json.dumps(apps_status()).encode(), "application/json"
         elif self.path.startswith("/api/kb/"):
@@ -854,6 +937,24 @@ class Handler(BaseHTTPRequestHandler):
             agent = self.path.rsplit("/", 1)[1]
             threading.Thread(target=crew_update, args=(agent,), daemon=True).start()
             self._json({"ok": True}); return
+        if self.path in ("/api/feedback", "/api/teach", "/api/forget"):
+            if self.headers.get("X-Crew") != "1":
+                self.send_error(403); return
+            agent = str(data.get("agent", ""))
+            if agent not in NAMES:
+                self._json({"ok": False, "note": "Unknown crew member."}); return
+            name, text = NAMES[agent][0], str(data.get("text", "")).strip()[:300]
+            if self.path == "/api/feedback":
+                had = lessons.add_feedback(agent, bool(data.get("good")), text)
+                note = ("👍 Noted. Keep it up." if data.get("good") else
+                        f"👎 Noted. {name} will study it tonight and try a fix." if had else
+                        f"👎 Noted, but {name} hasn't done a job yet this week to fix.")
+                self._json({"ok": True, "note": note}); return
+            if self.path == "/api/teach":
+                ok = lessons.add(agent, name, "From Rabbid", text, why=f"Rabbid taught: {text}")
+                self._json({"ok": ok, "note": f"🎓 {name} learned it." if ok else "Nothing new to learn there."}); return
+            gone = lessons.forget(agent, name, text)
+            self._json({"ok": bool(gone), "note": f"🗑 Forgot: {gone}" if gone else "No lesson matched."}); return
         if self.path == "/api/think":
             # n8n's crew jobs: free cloud brains via the brain switch, the member's own local model offline.
             if self.headers.get("X-Crew") != "1":
@@ -861,8 +962,9 @@ class Handler(BaseHTTPRequestHandler):
             job = str(data.get("job") or "free-chat")
             job = job if job in ("free-chat", "free-smart", "free-coder", "free-long") else "free-chat"
             try:
-                out = brain_json(str(data.get("system", "")), str(data.get("user", "")),
-                                 str(data.get("model") or "llama3.2:3b"), timeout=900, job=job)
+                system = str(data.get("system", ""))
+                out = brain_json(system, str(data.get("user", "")), str(data.get("model") or "llama3.2:3b"),
+                                 timeout=900, job=job, agent=str(data.get("agent") or "") or who_is(system))
                 self._json({"message": {"content": out}})
             except Exception as e:
                 self._json({"message": {"content": json.dumps({"report": f"The free AIs didn't answer ({e}).", "say": "", "alert": True})}})

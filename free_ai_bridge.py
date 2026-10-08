@@ -52,6 +52,51 @@ CODE_WORDS = ("code", "script", "python", "bash", "javascript", "html", "css", "
 SMART_WORDS = ("think hard", "step by step", "plan ", "planning", "compare", "analy", "pros and cons", "should i",
                "decide", "strategy", "why does", "why do", "explain why", "prove", "reason", "best way to", "trade-off")
 
+# 2026-10-08: a fast free AI reads the question and picks the lane (word lists sent "should I install Steam?" to the
+# coder). Groq gpt-oss-20b: ~0.3 s, 10/10 on the test questions. Up to 3 s, then the word lists decide.
+PICKER = "https://api.groq.com/openai/v1/chat/completions"
+PICKER_PROMPT = (
+    "Sort the user's newest message into ONE lane. Reply with only the lane word.\n"
+    "coder = writing, fixing or explaining code, scripts, terminal commands, config files, error messages, "
+    "installing or setting up software\n"
+    "smart = needs careful reasoning: decisions, comparisons, plans, pros and cons, math or logic problems, "
+    "'why' questions that need a real explanation, advice with trade-offs\n"
+    "chat = everything else: facts, quick questions, small talk, stories, jokes, definitions, recommendations")
+
+
+def groq_key():
+    try:
+        for line in open(os.path.expanduser("~/.config/crew/ai-keys.env")):
+            if line.startswith("GROQ_API_KEY="):
+                return line.split("=", 1)[1].strip().strip('"\'')
+    except OSError:
+        pass
+    return ""
+
+
+def ask_picker(messages, content):
+    """Ask the fast free AI for the lane; None if it can't answer in time."""
+    import urllib.request
+    key = groq_key()
+    if not key:
+        return None
+    # A little of the conversation so short follow-ups ("ok do it") land in the same lane
+    before = [m for m in messages[:-1] if m.get("role") in ("user", "assistant") and isinstance(m.get("content"), str)][-2:]
+    context = "".join(f"[earlier {m['role']}]: {m['content'][:400]}\n" for m in before)
+    body = {"model": "openai/gpt-oss-20b", "temperature": 0, "reasoning_effort": "low", "max_completion_tokens": 200,
+            "messages": [{"role": "system", "content": PICKER_PROMPT},
+                         {"role": "user", "content": f"{context}[newest message]: {content[:2000]}"}]}
+    req = urllib.request.Request(PICKER, json.dumps(body).encode(), {"Content-Type": "application/json",
+                                 "Authorization": f"Bearer {key}", "User-Agent": "curl/8"})  # Groq 403s Python's UA
+    try:
+        word = json.load(urllib.request.urlopen(req, timeout=3))["choices"][0]["message"]["content"].strip().lower()
+    except Exception:
+        return None
+    for lane in ("coder", "smart", "chat"):
+        if lane in word:
+            return f"free-{lane}"
+    return None
+
 
 def pick_brain(messages):
     """Choose the job for the newest user message: vision / long / coder / smart / chat."""
@@ -65,6 +110,12 @@ def pick_brain(messages):
     text = content.lower()
     if total > 60000 or len(content) > 25000:
         return "free-long"
+    if content.lstrip().startswith("### Task:"):  # Open WebUI's own background jobs (titles, tags): no need to sort
+        return "free-chat"
+    lane = ask_picker(messages, content)
+    if lane:
+        return lane
+    # Picker unreachable (offline, Groq down or slow): fall back to the word lists
     if any(w in text for w in CODE_WORDS):
         return "free-coder"
     if any(w in text for w in SMART_WORDS):

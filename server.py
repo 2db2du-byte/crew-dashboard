@@ -259,6 +259,8 @@ def brains_status():
          {"Authorization": f"Bearer {keys.get('CLOUDFLARE_API_TOKEN', '')}"}),
         ("OpenRouter", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1/key", {"Authorization": f"Bearer {keys.get('OPENROUTER_API_KEY', '')}"}),
         ("Mistral", "MISTRAL_API_KEY", "https://api.mistral.ai/v1/models", {"Authorization": f"Bearer {keys.get('MISTRAL_API_KEY', '')}"}),
+        ("NVIDIA", "NVIDIA_NIM_API_KEY", "https://integrate.api.nvidia.com/v1/models", {"Authorization": f"Bearer {keys.get('NVIDIA_NIM_API_KEY', '')}"}),
+        ("Ollama Cloud", "OLLAMA_API_KEY", "https://ollama.com/api/tags", {"Authorization": f"Bearer {keys.get('OLLAMA_API_KEY', '')}"}),
     ]
     out = [{"name": n, "up": bool(keys.get(k)) and probe(u, h), "note": "no key" if not keys.get(k) else ""} for n, k, u, h in checks]
     out.append({"name": "Brain switch", "up": port_up(4000), "note": "routes to the brains"})
